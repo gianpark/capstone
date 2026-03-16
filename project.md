@@ -1,81 +1,141 @@
-# 리듬에 반응하는 LED 조명 인터랙션 시스템
+# 음악 감성 인식 스마트 LED 조명 시스템
 ## 시스템 블럭도
 
 ```mermaid
 flowchart TD
     subgraph INPUT["🎵 입력부"]
         MIC[USB 마이크 모듈]
-        WEB[웹 컨트롤러\n스마트폰 / PC]
+        WEB["📱 PWA 웹 컨트롤러\n스마트폰 홈 화면 앱"]
     end
 
-    subgraph RPI["🖥️ 라즈베리파이 (메인 컨트롤러)"]
+    subgraph RPI["🖥️ 라즈베리파이 4 (메인 컨트롤러)"]
         direction TB
-        AUDIO[오디오 캡처\nPyAudio / sounddevice]
-        FFT[주파수 분석\nFFT - NumPy]
-        LOGIC[LED 제어 로직\n주파수 → 색상 / 밝기 / 패턴 매핑]
-        FLASK[웹 서버\nFlask]
-        MODE[모드 관리\n음악반응 / 수동 / 무지개]
+        AUDIO["프로세스 1\n오디오 캡처\nPyAudio"]
+        FFT["프로세스 2\nFFT 주파수 분석\nNumPy + Hanning Window"]
+        EMOTION["감정 분석\nBPM 감지 librosa\nSpectral Centroid"]
+        LOGIC["프로세스 3\nLED 제어 로직\n감정 + 주파수 → 색상 / 패턴"]
+        FLASK["프로세스 4\nFlask PWA 서버\nmanifest.json + Service Worker"]
+        MODE["모드 관리\n감정자동 / 주파수반응 / 수동 / 무지개"]
 
         AUDIO --> FFT
+        FFT --> EMOTION
         FFT --> LOGIC
+        EMOTION --> LOGIC
         FLASK --> MODE
         MODE --> LOGIC
     end
 
-    subgraph FREQ["🎚️ 주파수 대역 분리"]
-        LOW[저음 Bass\n20~300Hz]
-        MID[중음 Mid\n300~3kHz]
-        HIGH[고음 High\n3k~20kHz]
+    subgraph EMOTION_MAP["🎭 감정 분류"]
+        E_ENERGY["신나는\nBPM 빠름 + 음색 밝음"]
+        E_HAPPY["행복한\nBPM 보통 + 음색 밝음"]
+        E_CALM["차분한\nBPM 느림 + 음색 밝음"]
+        E_SAD["슬픈\nBPM 느림 + 음색 어두움"]
     end
 
     subgraph OUTPUT["💡 출력부"]
-        LED[WS2812B LED 스트립\nRGB 풀컬러]
-        RED[빨간색 펄스\n베이스 반응]
-        GREEN[초록색 흐름\n중음 반응]
-        BLUE[파란색 반짝임\n고음 반응]
+        LED["WS2812B LED 스트립\nRGB 풀컬러"]
+        O1["🟡 노랑/주황 빠른 펄스\n신나는 감정"]
+        O2["🟢 초록/하늘 물결 흐름\n행복한 감정"]
+        O3["⚪ 흰색/연파랑 호흡\n차분한 감정"]
+        O4["🔵 남색/보라 페이드\n슬픈 감정"]
     end
 
     MIC --> AUDIO
     WEB --> FLASK
 
-    FFT --> LOW
-    FFT --> MID
-    FFT --> HIGH
+    EMOTION --> E_ENERGY
+    EMOTION --> E_HAPPY
+    EMOTION --> E_CALM
+    EMOTION --> E_SAD
 
-    LOW --> RED
-    MID --> GREEN
-    HIGH --> BLUE
+    E_ENERGY --> O1
+    E_HAPPY --> O2
+    E_CALM --> O3
+    E_SAD --> O4
 
-    RED --> LED
-    GREEN --> LED
-    BLUE --> LED
+    O1 --> LED
+    O2 --> LED
+    O3 --> LED
+    O4 --> LED
 
-    LOGIC -->|GPIO PWM\nrpi_ws281x| LED
+    LOGIC -->|"GPIO PWM\nrpi_ws281x\n레벨 시프터 3.3V→5V"| LED
 ```
 
 ---
 
-## 주파수 → LED 매핑 상세
+## 감정 분석 파이프라인
 
 ```mermaid
 flowchart LR
-    subgraph ANALYSIS["FFT 분석 결과"]
-        B[저음\n20~300Hz]
-        M[중음\n300~3kHz]
-        H[고음\n3k~20kHz]
+    subgraph INPUT2["오디오 입력"]
+        RAW[마이크 원본 신호]
     end
 
-    subgraph EFFECT["LED 효과"]
-        E1["🔴 빨강 - 강한 펄스\n진폭에 비례한 밝기"]
-        E2["🟢 초록 - 물결 흐름\n리듬에 따라 이동"]
-        E3["🔵 파랑/흰색 반짝임\n고음 피크마다 점멸"]
-        E4["⚫ 서서히 페이드아웃\n무음 구간"]
+    subgraph PROCESS["신호 처리"]
+        WIN[Hanning 윈도우 적용\n스펙트럼 누수 방지]
+        FFT2[NumPy FFT\n주파수 분석]
+        BPM[librosa\nBPM 감지]
+        SC[Spectral Centroid\n음색 밝기 측정]
+        NOISE[노이즈 게이팅\n배경잡음 자동 학습]
     end
 
-    B --> E1
-    M --> E2
-    H --> E3
-    SILENCE[무음] --> E4
+    subgraph CLASSIFY["감정 분류"]
+        C1["신나는 Energetic\nBPM↑ + 음색↑"]
+        C2["행복한 Happy\nBPM= + 음색↑"]
+        C3["차분한 Calm\nBPM↓ + 음색↑"]
+        C4["슬픈 Sad\nBPM↓ + 음색↓"]
+    end
+
+    subgraph LED_FX["LED 효과"]
+        F1["🟡 빠른 펄스"]
+        F2["🟢 물결 흐름"]
+        F3["⚪ 호흡 효과"]
+        F4["🔵 페이드"]
+    end
+
+    RAW --> NOISE
+    NOISE --> WIN
+    WIN --> FFT2
+    FFT2 --> BPM
+    FFT2 --> SC
+    BPM --> C1
+    BPM --> C2
+    BPM --> C3
+    BPM --> C4
+    SC --> C1
+    SC --> C2
+    SC --> C3
+    SC --> C4
+    C1 --> F1
+    C2 --> F2
+    C3 --> F3
+    C4 --> F4
+```
+
+---
+
+## 주파수 → LED 매핑 (주파수 반응 모드)
+
+```mermaid
+flowchart LR
+    subgraph FREQ["주파수 대역 분리"]
+        B["저음 Bass\n20~300Hz"]
+        M["중음 Mid\n300Hz~3kHz"]
+        H["고음 High\n3kHz~20kHz"]
+        S["무음\n임계값 이하"]
+    end
+
+    subgraph FX["LED 효과"]
+        F1["🔴 빨강 강한 펄스\n진폭 비례 밝기"]
+        F2["🟢 초록 물결 흐름\n리듬에 따라 이동"]
+        F3["🔵 파랑/흰색 반짝임\n고음 피크마다 점멸"]
+        F4["⚫ 서서히 페이드아웃"]
+    end
+
+    B --> F1
+    M --> F2
+    H --> F3
+    S --> F4
 ```
 
 ---
@@ -88,27 +148,33 @@ flowchart TD
         RPI2[라즈베리파이 4]
         UMIC[USB 마이크]
         LEDS[WS2812B LED 스트립]
-        LSH[레벨 시프터\n3.3V→5V]
-        PWR[5V 전원 어댑터]
+        LSH["레벨 시프터\n3.3V→5V"]
+        PWR1["5V/3A 어댑터\nRPi 전용"]
+        PWR2["5V/10A 어댑터\nLED 전용 분리"]
     end
 
     subgraph SW["소프트웨어 (Python)"]
-        PA[PyAudio\n오디오 입력]
-        NP[NumPy\nFFT 연산]
-        WS[rpi_ws281x\nLED 제어]
-        FL[Flask\n웹 UI]
+        PA["PyAudio\n오디오 입력"]
+        NP["NumPy FFT\n주파수 분석"]
+        LB["librosa\nBPM + 감정 분석"]
+        WS["rpi_ws281x\nLED 제어"]
+        FL["Flask + PWA\n웹 컨트롤러"]
+        MP["multiprocessing\n4개 독립 프로세스"]
     end
 
-    RPI2 --> PA
-    RPI2 --> NP
-    RPI2 --> WS
-    RPI2 --> FL
+    RPI2 --> MP
+    MP --> PA
+    MP --> NP
+    MP --> LB
+    MP --> WS
+    MP --> FL
     UMIC --> PA
+    NP --> LB
     WS --> LSH
     LSH --> LEDS
-    PWR --> LEDS
+    PWR1 --> RPI2
+    PWR2 --> LEDS
 ```
-
 
 # 리듬에 반응하는 LED 조명 인터랙션 시스템
 ### Rhythm-Reactive LED Lighting Interaction System
