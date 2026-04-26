@@ -1,257 +1,214 @@
 # 🖥️ 견피티 (GeonPiTi)
-**AI & YouTube 기반 PC 부품 정보 플랫폼**
 
-> 2025 캡스톤 디자인 | 1인 프로젝트 | Python Flask
+> **AI & 유튜브 기반 PC 부품 종합 정보 플랫폼**  
+> 캡스톤 디자인 2026년 1학기 | 혼자서도 완벽한 PC 견적을 짤 수 있는 서비스
 
 ---
 
-## 📌 프로젝트 개요
+## 프로젝트 개요
 
-| 항목 | 내용 |
+견피티는 PC 부품 구매를 처음 접하는 사용자도 쉽게 최적의 견적을 구성할 수 있도록 돕는 플랫폼입니다. 다나와 실시간 크롤링으로 수집한 부품 데이터와 Groq LLM, YouTube Data API를 결합해 AI 기반 진단·추천·리뷰 요약 기능을 제공합니다.
+
+**총 추가 비용: 0원** (모든 API 무료 플랜 활용)
+
+---
+
+## 주요 기능
+
+### 부품 정보
+- GPU / CPU / RAM / MB / SSD / PSU / CASE / COOLER 8개 카테고리
+- 다나와 실시간 크롤링으로 최저가 자동 수집 (APScheduler)
+- 신품/중고 가격 이력 차트 (Chart.js)
+- 유사 부품 비교하기 (성능 점수 기반)
+- 전체 텍스트 검색 (글로벌 네비게이션 바)
+
+### AI 기능
+| 기능 | 설명 |
 |------|------|
-| 프로젝트명 | 견피티 (GeonPiTi) — 견적 + PC + 티어 |
-| 개발 목적 | PC 부품 선택이 어려운 일반 사용자를 위한 AI 추천 + 유튜브 리뷰 통합 플랫폼 |
-| 개발 형태 | 1인 캡스톤 디자인 |
-| 개발 환경 | Ubuntu 24.04 + VMware Workstation + VSCode SSH |
-| 기술 스택 | Python 3.11 · Flask · SQLAlchemy · SQLite → PostgreSQL |
-| 버전 | v0.7 (2025.04 기준) |
+| 🤖 내 부품 진단 | 현재 PC 스펙 입력 → 업그레이드 우선순위 분석 + DB 부품 연결 |
+| ✅ 견적 AI 검증 | 선택한 견적 구성의 호환성·병목·가성비 자동 검증 |
+| 📝 유튜브 리뷰 요약 | 부품별 YouTube 영상 자막 수집 → 장단점 AI 요약 |
+| 💬 자연어 견적 추천 | "50만원으로 롤 하고 싶어요" → AI 부품 추천 |
+
+### 커뮤니티
+- 견적 공유 피드 & 좋아요
+- 카테고리별 인기 부품 랭킹
+- 관심 부품 찜하기 (Watchlist)
+
+### 견적 구성
+- 드래그&드롭 방식 부품 선택
+- 용도별 추천 프리셋 (게이밍 / 영상편집 / 개발 / 사무)
+- 견적 저장·공유 (로그인 필요)
 
 ---
 
-## 🗺️ 시스템 아키텍처 블록도
+## 기술 스택
 
-![견피티 블럭도](./견피티_블럭도.svg)
-
-<details>
-<summary>텍스트 버전 보기</summary>
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        사용자 (Browser)                          │
-│              Chrome / Safari / Mobile Web                        │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │  HTTP Request
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Flask 웹 서버 (run.py)                         │
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │                   라우터 (Blueprints)                     │   │
-│  │  /main  │  /parts  │  /quote  │  /auth  │  /community    │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                            │                                     │
-│  ┌─────────────┐  ┌────────▼────────┐  ┌────────────────────┐  │
-│  │  Jinja2     │  │   비즈니스 로직  │  │   Flask-Login      │  │
-│  │  Templates  │  │  (routes/*.py)  │  │   세션 관리         │  │
-│  └─────────────┘  └────────┬────────┘  └────────────────────┘  │
-│                            │                                     │
-│  ┌─────────────────────────▼────────────────────────────────┐   │
-│  │               SQLAlchemy ORM (models/)                    │   │
-│  │   Part │ PriceHistory │ User │ Quote │ QuoteItem │ Comment │  │
-│  └─────────────────────────┬────────────────────────────────┘   │
-└────────────────────────────┼────────────────────────────────────┘
-                             │
-          ┌──────────────────┼──────────────────┐
-          │                  │                  │
-          ▼                  ▼                  ▼
-┌──────────────┐   ┌──────────────────┐  ┌───────────────────┐
-│   SQLite DB  │   │   외부 API       │  │  APScheduler       │
-│   (개발용)   │   │                  │  │  (자동 가격 수집)  │
-│              │   │ 네이버 쇼핑 API  │  │                    │
-│  배포 시     │   │ YouTube Data v3  │  │  6시간 주기        │
-│ PostgreSQL   │   │ 카카오 OAuth     │  │  가격 업데이트     │
-│  전환 예정   │   │ 구글 OAuth       │  │  + PriceHistory    │
-└──────────────┘   │ 환율 API (예정)  │  │  기록              │
-                   └──────────────────┘  └───────────────────┘
-```
-
-### 데이터 흐름
-
-```
-[가격 수집]
-APScheduler (6h) → naver_api.py → Part.current_price 업데이트 → PriceHistory 기록
-
-[유튜브 리뷰]
-사용자 요청 → youtube_api.py → 키워드 검색 → 영상 목록 반환 → 메인 페이지 표시
-
-[호환성 체크]
-견적 부품 선택 → /parts/compatibility → CPU소켓·RAM타입·파워용량·쿨러높이 검증 → 결과 표시
-
-[로그인 흐름]
-카카오/구글 OAuth 콜백  ┐
-자체 이메일+비밀번호    ├→ _get_or_create_user() → Flask-Login 세션
-```
-
-</details>
+| 분류 | 기술 |
+|------|------|
+| Backend | Python 3.12, Flask 3.0, SQLAlchemy, Flask-Login, Flask-Migrate |
+| Database | SQLite (개발), PostgreSQL 호환 |
+| Frontend | Jinja2, Vanilla JS, Chart.js, CSS Variables (다크모드 대응) |
+| AI | Groq API (llama-3.3-70b-versatile) |
+| 크롤링 | BeautifulSoup4, lxml, requests |
+| 스케줄링 | APScheduler |
+| 인증 | Flask-Login + Authlib (Google OAuth) |
+| 배포 환경 | Ubuntu 22.04 (VMware), Python venv |
 
 ---
 
-## 📁 파일 구조
+## 프로젝트 구조
 
 ```
 geonpiti/
-├── run.py                      # 앱 실행 진입점
-├── requirements.txt            # 패키지 목록
-├── .env                        # API 키 (비공개)
-│
-└── app/
-    ├── __init__.py             # Flask 앱 팩토리 + DB 초기화
-    ├── seed_data.py            # 더미 부품 데이터 (52개)
-    │
-    ├── models/
-    │   ├── part.py             # 부품 모델 (CPU/GPU/RAM 등 전체 스펙)
-    │   ├── user.py             # 사용자 모델 (소셜 + 자체 로그인)
-    │   ├── quote.py            # 견적 + 견적 아이템
-    │   └── community.py        # 커뮤니티 게시글 + 댓글
-    │
-    ├── routes/
-    │   ├── main.py             # 메인 페이지, 뉴스, 추천 영상 API
-    │   ├── parts.py            # 부품 목록/상세/비교/호환성
-    │   ├── quote.py            # 견적 빌더, 저장, 공유
-    │   ├── auth.py             # 카카오/구글 OAuth + 자체 로그인
-    │   └── community.py        # 커뮤니티 피드, 게시글 CRUD
-    │
-    ├── services/
-    │   ├── naver_api.py        # 네이버 쇼핑 API (가격 조회)
-    │   ├── youtube_api.py      # YouTube Data API v3 (리뷰 검색)
-    │   ├── scheduler.py        # APScheduler 가격 자동 수집
-    │   └── news_api.py         # 네이버 뉴스 API
-    │
-    ├── templates/
-    │   ├── base.html           # 공통 레이아웃 (네비게이션, 푸터)
-    │   ├── auth/
-    │   │   └── login.html      # 로그인 페이지 (탭: 소셜 / 자체)
-    │   ├── main/
-    │   │   └── index.html      # 메인 (히어로 + 유튜브 + 기능 소개)
-    │   ├── parts/
-    │   │   ├── list.html       # 부품 목록 + 카테고리 필터
-    │   │   ├── detail.html     # 부품 상세 + 가격 그래프
-    │   │   └── compare.html    # 동일 시리즈 비교 + 레이더 차트
-    │   ├── quote/
-    │   │   ├── builder.html    # 견적 빌더 (프리셋 + 호환성 체크)
-    │   │   ├── my_quotes.html  # 내 견적 목록
-    │   │   └── share.html      # 견적 공유 페이지
-    │   └── community/
-    │       └── feed.html       # 커뮤니티 피드
-    │
-    └── static/
-        ├── css/style.css       # 전역 스타일
-        └── js/main.js          # 공통 JS
+├── app/
+│   ├── __init__.py              # Flask 앱 팩토리
+│   ├── models/
+│   │   ├── part.py              # Part, PriceHistory, UsedPriceHistory
+│   │   ├── user.py              # User (Google OAuth)
+│   │   ├── quote.py             # Quote, QuoteItem
+│   │   └── community.py        # Post, Like, Watchlist
+│   ├── routes/
+│   │   ├── main.py              # 메인 페이지, 통계 API
+│   │   ├── parts.py             # 부품 목록/상세/비교
+│   │   ├── quote.py             # 견적 구성/저장/공유
+│   │   ├── community.py        # 피드/랭킹
+│   │   ├── auth.py              # 로그인/로그아웃/Google OAuth
+│   │   ├── ai.py                # AI 진단/검증/추천/리뷰 API
+│   │   └── admin.py             # 크롤링 관리 페이지
+│   ├── services/
+│   │   ├── danawa_crawler.py    # 다나와 크롤러 (목록+스펙+가격)
+│   │   ├── gemini_service.py    # Groq API 클라이언트
+│   │   ├── ai_diagnose.py       # 내 부품 진단 / 견적 검증 로직
+│   │   ├── ai_recommend.py      # 자연어 견적 추천 로직
+│   │   ├── ai_review.py         # YouTube 리뷰 요약 로직
+│   │   ├── youtube_api.py       # YouTube Data API
+│   │   ├── naver_api.py         # 네이버 쇼핑 API (가격)
+│   │   └── scheduler.py         # 가격 자동 업데이트 스케줄러
+│   ├── templates/
+│   │   ├── base.html            # 공통 레이아웃 (네비/푸터)
+│   │   ├── main/index.html      # 메인 페이지
+│   │   ├── parts/               # 부품 목록/상세/비교
+│   │   ├── quote/               # 견적 구성/저장
+│   │   ├── community/           # 피드/랭킹
+│   │   ├── auth/                # 로그인
+│   │   └── ai/diagnose.html     # AI 진단 페이지
+│   └── static/
+│       ├── css/style.css        # 전체 스타일 (CSS 변수 기반)
+│       ├── js/main.js           # 공통 JS (검색, 다크모드)
+│       ├── manifest.json        # PWA 설정
+│       └── sw.js                # Service Worker
+├── run.py                       # 앱 실행 진입점
+├── requirements.txt
+└── .env.example
 ```
 
 ---
 
-## ✅ 구현 현황
+## 설치 및 실행
 
-| # | 기능 | 상태 | 비고 |
-|---|------|:----:|------|
-| 1 | 부품 DB 구축 (52개 시드 데이터) | ✅ 완료 | CPU·GPU·RAM·MB·SSD·PSU·CASE·COOLER |
-| 2 | 부품 목록 페이지 (카테고리 필터) | ✅ 완료 | |
-| 3 | 부품 상세 페이지 | ✅ 완료 | 스펙 전체 표시 |
-| 4 | 가격 히스토리 그래프 | ✅ 완료 | Chart.js 라인 차트 |
-| 5 | 동일 시리즈 비교 + 레이더 차트 | ✅ 완료 | Chart.js Radar |
-| 6 | 견적 빌더 (부품 추가/삭제) | ✅ 완료 | JSON 충돌 버그 수정 |
-| 7 | 견적 프리셋 (게이밍/3D/사무/개발) | ✅ 완료 | 키워드 매칭 자동 선택 |
-| 8 | 호환성 체크 | ✅ 완료 | 소켓·RAM·파워·쿨러 검증 |
-| 9 | 견적 저장 & 공유 | ✅ 완료 | URL 공유 방식 |
-| 10 | 카카오 로그인 (OAuth) | ⚙️ 키 필요 | `.env` 설정 시 활성화 |
-| 11 | 구글 로그인 (OAuth) | ⚙️ 키 필요 | `.env` 설정 시 활성화 |
-| 12 | 자체 이메일/비밀번호 로그인 | ✅ 완료 | bcrypt 해시 저장 |
-| 13 | 네이버 쇼핑 API 가격 수집 | ✅ 완료 | 키 설정됨 |
-| 14 | APScheduler 자동 가격 업데이트 | ✅ 완료 | 6시간 주기 |
-| 15 | YouTube 리뷰 영상 메인 표시 | ✅ 완료 | API 미설정 시 Mock 데이터 |
-| 16 | 커뮤니티 피드 | ⚙️ 개발 중 | 기본 CRUD 구현됨 |
-
----
-
-## 🔑 API 키 설정 (`.env`)
-
-```env
-# 네이버 쇼핑/뉴스 API (설정됨)
-NAVER_CLIENT_ID=NMlkZguRB6c40GSYzKwi
-NAVER_CLIENT_SECRET=dF6Mj4_e5a
-
-# YouTube Data API v3 (발급 완료, 키 입력 필요)
-YOUTUBE_API_KEY=your_youtube_api_key_here
-
-# 카카오 OAuth (키 발급 필요)
-KAKAO_CLIENT_ID=your_kakao_rest_api_key
-KAKAO_REDIRECT_URI=http://localhost:5000/auth/kakao/callback
-
-# 구글 OAuth (키 발급 필요)
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-GOOGLE_REDIRECT_URI=http://localhost:5000/auth/google/callback
-
-# Flask
-SECRET_KEY=your_secret_key_here
-```
-
----
-
-## 🚀 실행 방법
+### 1. 환경 변수 설정
 
 ```bash
-# 1. 가상환경 활성화
-cd ~/geonpiti
+cp .env.example .env
+```
+
+`.env` 파일에 아래 값을 채워주세요:
+
+```env
+SECRET_KEY=your-secret-key
+DATABASE_URL=sqlite:///geonpiti.db
+
+# Groq API (무료: https://console.groq.com)
+GROQ_API_KEY=your-groq-api-key
+
+# YouTube Data API v3 (무료: Google Cloud Console)
+YOUTUBE_API_KEY=your-youtube-api-key
+
+# 네이버 쇼핑 API (무료: https://developers.naver.com)
+NAVER_CLIENT_ID=your-naver-client-id
+NAVER_CLIENT_SECRET=your-naver-client-secret
+
+# Google OAuth (선택, 로그인 기능)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+```
+
+### 2. 패키지 설치
+
+```bash
+python3 -m venv venv
 source venv/bin/activate
-
-# 2. 패키지 설치 (최초 1회)
 pip install -r requirements.txt
+```
 
-# 3. DB 마이그레이션 (최초 또는 모델 변경 후)
-flask db init        # 최초 1회만
+### 3. DB 초기화 및 데이터 수집
+
+```bash
+flask db init
 flask db migrate -m "init"
 flask db upgrade
-
-# 4. 시드 데이터 입력 (최초 1회)
-python3 -c "from app import create_app, db; from app.seed_data import seed; app=create_app(); app.app_context().push(); seed()"
-
-# 5. 서버 실행
-python3 run.py
-# → http://localhost:5000 접속
 ```
+
+### 4. 서버 실행
+
+```bash
+flask run --host=0.0.0.0 --port=5000
+```
+
+브라우저에서 `http://localhost:5000` 접속
 
 ---
 
-## 🛣️ 향후 개발 계획
+## 관리자 기능
 
-### 🤖 AI 기능 (핵심 개발 방향)
+`http://localhost:5000/admin/` 에서 다나와 크롤링을 실행할 수 있습니다.
 
-> 외부 유료 API 없이 **Ollama + Gemma3 4B** 로컬 LLM으로 완전 무료 구현
-
-| 우선순위 | 기능 | 기술 스택 | 설명 |
-|:--------:|------|-----------|------|
-| 🔴 High | **AI 자연어 부품 추천** | Ollama · Gemma3 4B | "50만원으로 롤 하고 싶어요" → 견적 자동 생성 |
-| 🔴 High | **YouTube 리뷰 AI 요약** | youtube-transcript-api · Ollama | 리뷰 영상 자막 분석 → 장점 3개 / 단점 2개 카드 |
-
-**AI 부품 추천 흐름**
-```
-사용자 자연어 입력 → DB 부품 목록 컨텍스트 주입
-→ Gemma3 4B 추론 → JSON 파싱 → 견적 빌더 자동 적용
-```
-
-**YouTube 리뷰 요약 흐름**
-```
-부품 상세 페이지 → YouTube API 검색 → 자막 추출 (무료)
-→ Gemma3 4B 요약 → 장단점 카드 표시 → DB 캐싱 (재사용)
-```
-
-**실행 환경**: Ubuntu 24.04 · i7-14700HX · RAM 16GB · CPU 추론 (응답 약 10~30초)
+- **스펙 재수집**: 기존 DB 부품의 스펙 정보를 최신 다나와 HTML 구조로 재파싱
+- **카테고리별 크롤링**: GPU, CPU 등 특정 카테고리 신규 부품 수집
+- **전체 크롤링**: 8개 카테고리 일괄 수집
 
 ---
 
-### 📋 전체 개발 로드맵
+## API 엔드포인트
 
-| 우선순위 | 기능 | 설명 |
-|:--------:|------|------|
-| 🔴 High | AI 자연어 부품 추천 | Ollama + Gemma3 4B 로컬 LLM |
-| 🔴 High | YouTube 리뷰 AI 요약 | 자막 추출 + 장단점 카드 생성 |
-| 🔴 High | 카카오/구글 OAuth 키 등록 | 소셜 로그인 활성화 |
-| 🟡 Mid | 커뮤니티 기능 완성 | 게시글 작성·댓글·좋아요 |
-| 🟢 Low | PostgreSQL 전환 | 배포 환경용 DB 마이그레이션 |
-| 🟢 Low | 환율 API 연동 | 해외 직구 가격 비교 |
+| Method | URL | 설명 |
+|--------|-----|------|
+| GET | `/` | 메인 페이지 |
+| GET | `/parts/` | 부품 목록 (카테고리 필터) |
+| GET | `/parts/<id>` | 부품 상세 |
+| GET | `/parts/compare` | 부품 비교 |
+| GET | `/quote/` | 견적 구성 빌더 |
+| GET | `/ai/diagnose` | AI 부품 진단 페이지 |
+| POST | `/api/ai-diagnose` | AI 진단 API |
+| POST | `/api/ai-validate` | 견적 AI 검증 API |
+| POST | `/api/ai-recommend` | 자연어 견적 추천 API |
+| GET | `/api/review-summary` | YouTube 리뷰 요약 API |
+| GET | `/api/featured-videos` | 메인 추천 영상 API |
+| GET | `/community/feed` | 커뮤니티 피드 |
+| GET | `/community/ranking` | 인기 랭킹 |
 
 ---
 
-> 📄 상세 기획서: `geonpiti_기획서_v2.docx`
+## 데이터 모델
+
+### Part (부품)
+- 8개 카테고리 × 카테고리별 상세 스펙 컬럼
+- 신품/중고 현재가 + 가격 이력
+- AI 리뷰 캐시 (YouTube 요약 결과)
+- 성능 점수 / 가성비 점수
+
+### PriceHistory / UsedPriceHistory
+- 날짜별 신품/중고 가격 이력 (가격 추이 차트용)
+
+### Quote / QuoteItem
+- 사용자 견적 구성 저장 및 공유
+
+### User
+- Google OAuth 기반 인증
+
+---
+
+## 라이선스
+
+캡스톤 디자인 프로젝트 — 학술 목적 사용만 허용
