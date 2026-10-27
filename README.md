@@ -5,6 +5,10 @@ https://youtu.be/IznWBG9Pa6g?si=qrW45xPYjKKoTJCE
 
 https://youtu.be/F9Zzw-yBKzg?si=1sqkIeR1it5rBKhI
 
+https://youtu.be/bmYC1haMQ_Q?si=ZoxErzsJHkFQqon-
+
+https://youtu.be/KEmrAhV5xjQ?si=XdHMO4kpuiKI-6O-
+
 대본과 장르를 입력하면 AI 영상을 만들어 YouTube에 올리고, **시청자 댓글에서 건설적인 피드백을 골라 다음 영상에 자동으로 반영**하는 범용 파이프라인입니다.
 캡스톤디자인(졸업작품) 프로젝트이며, 국립군산대학교 임베디드소프트웨어학과 홍보영상을 사례로 검증했습니다.
 
