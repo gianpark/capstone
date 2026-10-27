@@ -1,5 +1,9 @@
 # AI 영상 생성 · 댓글 피드백 자동 반영 파이프라인
 
+https://youtu.be/F9Zzw-yBKzg?si=1sqkIeR1it5rBKhI
+
+https://youtu.be/IznWBG9Pa6g?si=qrW45xPYjKKoTJCE
+
 대본과 장르를 넣으면 AI 영상을 만들어 YouTube에 올리고, **댓글 피드백을 분석해 다음 영상에 자동으로 반영**하는 범용 파이프라인입니다.
 국립군산대학교 임베디드소프트웨어학과 홍보영상을 사례로 검증했습니다.
 
